@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, canTeach, homePath, isAdmin, logout, session, ui } from '../api'
 import Assistant from './Assistant.vue'
@@ -8,6 +8,7 @@ const route = useRoute()
 const router = useRouter()
 const query = ref('')
 const notes = ref([])
+const menuOpen = ref(false)
 
 const items = computed(() => {
   const rows = [
@@ -60,6 +61,9 @@ async function loadNotes() {
 }
 
 onMounted(loadNotes)
+watch(() => route.fullPath, () => {
+  menuOpen.value = false
+})
 
 function goSearch() {
   const q = query.value.trim()
@@ -86,7 +90,8 @@ function active(item, isActive, isExactActive) {
 </script>
 
 <template>
-  <div class="app">
+  <div class="app" :class="{ 'nav-open': menuOpen }">
+    <button v-if="menuOpen && !route.meta.lesson" class="nav-backdrop" type="button" aria-label="Close menu" @click="menuOpen = false"></button>
     <aside v-if="!route.meta.lesson" class="side">
       <router-link :to="homePath()" class="logo">
         <span class="logo-mark">M</span>
@@ -94,7 +99,7 @@ function active(item, isActive, isExactActive) {
       </router-link>
       <nav>
         <router-link v-for="item in items" :key="item.to" v-slot="{ href, navigate, isActive, isExactActive }" :to="item.to" custom>
-          <a :href="href" class="item" :class="{ on: active(item, isActive, isExactActive) }" @click="navigate">
+          <a :href="href" class="item" :class="{ on: active(item, isActive, isExactActive) }" @click="menuOpen = false; navigate($event)">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <path :d="icons[item.icon]" />
             </svg>
@@ -112,6 +117,9 @@ function active(item, isActive, isExactActive) {
     </aside>
     <div class="workspace">
       <header v-if="!route.meta.lesson" class="topbar">
+        <button class="menu-btn" type="button" aria-label="Open menu" @click="menuOpen = !menuOpen">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+        </button>
         <form class="top-search" @submit.prevent="goSearch">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
           <input v-model="query" type="search" placeholder="Search" aria-label="Search" />
@@ -128,7 +136,7 @@ function active(item, isActive, isExactActive) {
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 7h14M9 7V5h6v2M8 7l1 13h6l1-13" /></svg>
           </router-link>
           <button class="who-btn" type="button" @click="ui.account = !ui.account">
-            <span>{{ session.user?.full_name }}</span>
+            <span class="who-name">{{ session.user?.full_name }}</span>
             <span class="avatar sm">{{ initials }}</span>
           </button>
           <div v-if="ui.notices" class="pop">

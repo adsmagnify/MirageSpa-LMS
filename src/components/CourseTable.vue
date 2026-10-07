@@ -97,10 +97,10 @@ async function trash(row) {
           <small v-if="row.category">{{ row.category }}<template v-if="row.instructor_name"> · {{ row.instructor_name }}</template><template v-if="row.progress != null"> · {{ row.progress }}%</template></small>
         </span>
       </router-link>
-      <router-link class="metric" to="/assignments">{{ dash(row.to_score) }}</router-link>
-      <span class="metric">{{ dash(row.learners) }}</span>
-      <span class="metric">{{ dash(row.completed) }}</span>
-      <span class="metric">{{ dash(row.deactivated) }}</span>
+      <router-link class="metric" data-label="To score" to="/assignments">{{ dash(row.to_score) }}</router-link>
+      <span class="metric" data-label="Learners">{{ dash(row.learners) }}</span>
+      <span class="metric" data-label="Completed">{{ dash(row.completed) }}</span>
+      <span class="metric" data-label="Deactivated">{{ dash(row.deactivated) }}</span>
       <div v-if="row.can_edit" class="row-menu">
         <button type="button" aria-label="Course actions" @click="openMenu = openMenu === row.id ? null : row.id">⋯</button>
         <div v-if="openMenu === row.id" class="pop menu">
