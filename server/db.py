@@ -389,10 +389,22 @@ def slugify(title: str) -> str:
     return slug or "course"
 
 
+def _mapping_row(_cursor, row):
+    return row
+
+
 @contextmanager
 def connect():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
+    url = os.environ.get("TURSO_DATABASE_URL", "").strip()
+    token = os.environ.get("TURSO_AUTH_TOKEN", "").strip()
+    if url and token:
+        import turso_serverless
+
+        conn = turso_serverless.connect(url, auth_token=token)
+        conn.row_factory = _mapping_row
+    else:
+        conn = sqlite3.connect(DB_PATH)
+        conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
     try:
         yield conn
