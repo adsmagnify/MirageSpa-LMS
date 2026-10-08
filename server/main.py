@@ -632,3 +632,8 @@ def job_detail(job_id: int, user: dict | None = Depends(optional_user)):
             )
         applied = bool(user and db.one(conn, "SELECT id FROM applications WHERE job_id = ? AND user_id = ?", (job_id, user["id"])))
     return {"job": job, "applications": applications, "applied": applied}
+
+
+_frontend = getattr(app, "frontend", None)
+if _frontend is not None:
+    _frontend("/", directory="dist", fallback="index.html")
