@@ -16,8 +16,10 @@ from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-DB_PATH = Path(__file__).with_name("mirage.db")
-UPLOADS = Path(__file__).with_name("uploads")
+DB_PATH = Path(os.environ.get("MIRAGE_DB", Path(__file__).with_name("mirage.db")))
+UPLOADS = Path(os.environ.get("MIRAGE_UPLOADS", Path(__file__).with_name("uploads")))
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+UPLOADS.mkdir(parents=True, exist_ok=True)
 SECRET = os.environ.get("MIRAGE_SECRET", "mirage-academy-dev-secret").encode()
 TOKEN_DAYS = 7
 

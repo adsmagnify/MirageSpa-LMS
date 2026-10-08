@@ -1,5 +1,6 @@
 """Mirage Academy HTTP API."""
 
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadFile
@@ -19,13 +20,26 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Mirage Academy", lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://127.0.0.1:5173", "http://localhost:5173"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+_cors_origins = [
+    origin.strip()
+    for origin in os.environ.get("CORS_ORIGINS", "http://127.0.0.1:5173,http://localhost:5173").split(",")
+    if origin.strip()
+]
+_cors = {
+    "allow_origins": _cors_origins,
+    "allow_credentials": True,
+    "allow_methods": ["*"],
+    "allow_headers": ["*"],
+}
+_cors_regex = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+if _cors_regex:
+    _cors["allow_origin_regex"] = _cors_regex
+app.add_middleware(CORSMiddleware, **_cors)
+
+
+@app.get("/api/health")
+def health():
+    return {"ok": True}
 
 
 @app.exception_handler(ValueError)
