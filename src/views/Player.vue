@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { api, session, toast } from '../api'
+import { api, mediaUrl, session, toast } from '../api'
 import { paragraphs } from '../format'
 
 const route = useRoute()
@@ -32,12 +32,6 @@ async function load() {
 }
 
 watch(() => [route.params.slug, route.params.chapter, route.params.lesson], load, { immediate: true })
-
-function mediaUrl(url) {
-  if (!url || !session.token || !url.startsWith('/api/library/')) return url
-  const join = url.includes('?') ? '&' : '?'
-  return `${url}${join}token=${encodeURIComponent(session.token)}`
-}
 
 function open(chapter, lessonNumber) {
   router.push(`/courses/${route.params.slug}/learn/${chapter}-${lessonNumber}`)

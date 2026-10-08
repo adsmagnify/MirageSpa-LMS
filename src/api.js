@@ -19,11 +19,26 @@ export function toast(message, tone = 'ok') {
   }, 3800)
 }
 
+export const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
+
+export function apiUrl(path) {
+  const suffix = path.startsWith('/') ? path : `/${path}`
+  return `${apiBase}/api${suffix}`
+}
+
+export function mediaUrl(url) {
+  if (!url || !url.startsWith('/api/')) return url
+  const full = `${apiBase}${url}`
+  if (!session.token || !url.startsWith('/api/library/')) return full
+  const join = full.includes('?') ? '&' : '?'
+  return `${full}${join}token=${encodeURIComponent(session.token)}`
+}
+
 export async function api(path, { method = 'GET', body, form } = {}) {
   const headers = {}
   if (session.token) headers.Authorization = `Bearer ${session.token}`
   if (body && !form) headers['Content-Type'] = 'application/json'
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(apiUrl(path), {
     method,
     headers,
     body: form ? body : body ? JSON.stringify(body) : undefined,
