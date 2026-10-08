@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 
-from server import db
+try:
+    from server import db
+except ImportError:
+    import db
 
 
 def blocks_for(conn, lesson: dict, user: dict | None, editor: bool) -> list[dict]:

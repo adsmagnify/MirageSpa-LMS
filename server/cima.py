@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
-from server import db
+try:
+    from server import db
+except ImportError:
+    import db
 
 
 def ensure(conn) -> None:

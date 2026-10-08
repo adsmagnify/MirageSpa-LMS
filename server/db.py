@@ -458,7 +458,10 @@ def init_db() -> None:
             seed(conn)
             conn.execute("INSERT INTO app_meta (key, value) VALUES ('schema', '6')")
         ensure_library(conn)
-        from server import cima
+        try:
+            from server import cima
+        except ImportError:
+            import cima
         cima.ensure(conn)
         conn.execute("PRAGMA foreign_keys = ON")
 

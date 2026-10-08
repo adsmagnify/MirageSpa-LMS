@@ -6,7 +6,10 @@ import json
 import secrets
 from pathlib import Path
 
-from server import db
+try:
+    from server import db
+except ImportError:
+    import db
 
 MIME = {
     ".mp4": "video/mp4",

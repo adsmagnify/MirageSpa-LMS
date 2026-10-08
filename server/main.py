@@ -7,10 +7,24 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, UploadF
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 
-from server import cima
-from server import db
-from server import learning
-from server import materials
+import sys
+from pathlib import Path
+
+_here = Path(__file__).resolve().parent
+for _path in (str(_here), str(_here.parent)):
+    if _path not in sys.path:
+        sys.path.insert(0, _path)
+
+try:
+    from server import cima
+    from server import db
+    from server import learning
+    from server import materials
+except ImportError:
+    import cima
+    import db
+    import learning
+    import materials
 
 
 @asynccontextmanager
@@ -31,7 +45,7 @@ _cors = {
     "allow_methods": ["*"],
     "allow_headers": ["*"],
 }
-_cors_regex = os.environ.get("CORS_ORIGIN_REGEX", "").strip()
+_cors_regex = os.environ.get("CORS_ORIGIN_REGEX", r"https://.*\.vercel\.app").strip()
 if _cors_regex:
     _cors["allow_origin_regex"] = _cors_regex
 app.add_middleware(CORSMiddleware, **_cors)
@@ -635,5 +649,6 @@ def job_detail(job_id: int, user: dict | None = Depends(optional_user)):
 
 
 _frontend = getattr(app, "frontend", None)
-if _frontend is not None:
-    _frontend("/", directory="dist", fallback="index.html")
+_dist = _here.parent / "dist"
+if _frontend is not None and _dist.is_dir():
+    _frontend("/", directory=str(_dist), fallback="index.html")
