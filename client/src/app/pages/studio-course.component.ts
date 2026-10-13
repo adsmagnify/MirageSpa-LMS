@@ -15,7 +15,7 @@ import { ApiService } from '../api.service';
             <h2>{{ data.course.title }}</h2>
           </div>
           <div class="actions">
-            <a class="btn ghost" [routerLink]="'/learn/' + data.course.slug">Preview</a>
+            <a class="btn ghost" [routerLink]="['/courses', data.course.slug]">Preview</a>
             <button class="btn ghost" type="button" (click)="share()">Share</button>
             @if (data.course.status !== 'published') {
               <button class="btn" type="button" (click)="publish('published')">Publish</button>

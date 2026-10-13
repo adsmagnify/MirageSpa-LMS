@@ -87,6 +87,7 @@ export const routes: Routes = [
       { path: 'user/:username', component: ProfileComponent },
       { path: 'studio/:id', component: StudioCourseComponent, canActivate: [authGuard], data: { auth: true, teach: true } },
       { path: 'learn', redirectTo: 'courses', pathMatch: 'full' },
+      { path: 'learn/:slug', redirectTo: 'courses/:slug' },
       { path: 'jobs', redirectTo: 'job-openings', pathMatch: 'full' },
       { path: 'insights', redirectTo: 'statistics', pathMatch: 'full' },
     ],

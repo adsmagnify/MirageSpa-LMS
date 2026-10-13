@@ -11,6 +11,64 @@ import { paragraphs } from '../format';
     @if (data) {
       <div class="page">
         <p class="crumbs"><a routerLink="/courses">Courses</a><span>/</span><span>{{ data.course.title }}</span></p>
+        @if (canEdit()) {
+          <nav class="tabs">
+            <button type="button" [class.on]="view === 'overview'" (click)="view = 'overview'">Overview</button>
+            <button type="button" [class.on]="view === 'dashboard'" (click)="view = 'dashboard'">Dashboard</button>
+            <button type="button" [class.on]="view === 'editor'" (click)="view = 'editor'">Editor</button>
+            <button type="button" [class.on]="view === 'settings'" (click)="view = 'settings'">Settings</button>
+          </nav>
+        }
+        @if (view === 'dashboard' && canEdit()) {
+          <section class="stat-kpis">
+            <article><span>Enrolled</span><strong>{{ data.course.learners }}</strong><small>Active learners</small></article>
+            <article><span>Your progress</span><strong>{{ data.progress }}%</strong><small>As the instructor</small></article>
+            <article><span>Rating</span><strong>{{ data.rating || '—' }}</strong><small>{{ data.reviews.length }} reviews</small></article>
+            <article><span>Lessons</span><strong>{{ lessonCount() }}</strong><small>In the outline</small></article>
+          </section>
+          <article class="panel stack" style="padding: 16px; margin-top: 16px">
+            <form class="stack" (ngSubmit)="assignLearner()">
+              <label class="field"><span>Enroll a learner</span><input [(ngModel)]="learnerEmail" name="learnerEmail" type="email" required placeholder="learner@email" /></label>
+              <button class="btn" type="submit" [disabled]="busy">Enroll</button>
+            </form>
+            @for (person of roster; track person.id) {
+              <p class="spread">
+                <span>{{ person.full_name }} @if (!person.active) { <span class="muted">Deactivated</span> }</span>
+                <button class="btn small ghost" type="button" (click)="toggleLearner(person)">{{ person.active ? 'Deactivate' : 'Activate' }}</button>
+              </p>
+            }
+            @if (!roster.length) {
+              <p class="empty">No students enrolled yet.</p>
+            }
+          </article>
+        } @else if (view === 'editor' && canEdit()) {
+          <article class="panel stack" style="padding: 16px">
+            <p class="dek">Chapters and lessons are edited here, the same way a course outline is built.</p>
+            <a class="btn" [routerLink]="['/studio', data.course.id]">Open course editor</a>
+          </article>
+        } @else if (view === 'settings' && canEdit()) {
+          <form class="maker-form" (ngSubmit)="saveSettings()">
+            <h2>Settings</h2>
+            <div class="maker-grid">
+              <label class="field wide"><span>Title</span><input [(ngModel)]="settings.title" name="title" required /></label>
+              <label class="field"><span>Category</span><input [(ngModel)]="settings.category" name="category" /></label>
+              <label class="field"><span>Level</span><input [(ngModel)]="settings.level" name="level" /></label>
+              <label class="field wide"><span>Short introduction</span><input [(ngModel)]="settings.summary" name="summary" /></label>
+              <label class="field wide"><span>Description</span><textarea [(ngModel)]="settings.description" name="description"></textarea></label>
+            </div>
+            <div class="checks">
+              <label><input type="checkbox" [(ngModel)]="settings.enable_certification" name="cert" /> Offer a certificate</label>
+              <label><input type="checkbox" [(ngModel)]="settings.disable_self_learning" name="closed" /> Learners must be enrolled by an instructor</label>
+              <label><input type="checkbox" [(ngModel)]="settings.paid" name="paid" /> Paid course</label>
+            </div>
+            <div class="maker-actions">
+              <button class="btn" type="submit" [disabled]="busy">Save</button>
+              <button class="btn ghost" type="button" (click)="setStatus(data.course.status === 'published' ? 'draft' : 'published')">
+                {{ data.course.status === 'published' ? 'Unpublish' : 'Publish' }}
+              </button>
+            </div>
+          </form>
+        } @else {
         <div class="split">
           <div>
             <div class="banner-wrap">
@@ -93,10 +151,18 @@ import { paragraphs } from '../format';
               }
               @if (data.enrolled) {
                 <a class="btn" [routerLink]="['/courses', data.course.slug, 'learn', '1-1']">
-                  {{ data.progress ? 'Continue' : 'Start lesson' }}
+                  {{ data.progress ? 'Continue learning' : 'Start lesson' }}
                 </a>
+              } @else if (!api.user) {
+                <a class="btn" routerLink="/login" [queryParams]="{ next: router.url }">Sign in to enroll</a>
+              } @else if (data.course.disable_self_learning && !canEdit()) {
+                <p class="muted">Contact the administrator to enroll for this course.</p>
+              } @else if (data.course.paid && !canEdit()) {
+                <p class="muted">This course is paid. An instructor enrolls you.</p>
+              } @else if (!canEdit()) {
+                <button class="btn" type="button" [disabled]="busy" (click)="enroll()">Enroll now</button>
               }
-              @if (api.canTeach()) {
+              @if (canEdit()) {
                 <form class="stack" (ngSubmit)="assignLearner()">
                   <label class="field"><span>Assign a learner</span><input [(ngModel)]="learnerEmail" name="learnerEmail" type="email" required placeholder="kajal@adsmagnify.in" /></label>
                   <button class="btn" type="submit" [disabled]="busy">Assign class</button>
@@ -112,8 +178,8 @@ import { paragraphs } from '../format';
                     </p>
                   }
                 </div>
-              } @else if (!data.enrolled && !api.canTeach()) {
-                <p class="muted">An instructor assigns this class before you can open it.</p>
+              } @else if (!data.enrolled && !api.user) {
+                <p class="muted">Sign in to enroll.</p>
               }
               <button class="btn ghost" type="button" (click)="share()">Share</button>
               @if (data.course.enable_certification) {
@@ -129,6 +195,7 @@ import { paragraphs } from '../format';
             </article>
           </aside>
         </div>
+        }
       </div>
     } @else {
       <div class="page"><p class="empty">{{ error || 'Loading course…' }}</p></div>
@@ -147,6 +214,8 @@ export class CourseComponent implements OnInit {
   learnerEmail = '';
   roster: any[] = [];
   adjusting = false;
+  view = 'overview';
+  settings: any = { title: '', summary: '', description: '', category: '', level: '', enable_certification: false, disable_self_learning: false, paid: false };
   kindLabel: any = { text: 'Reading', video: 'Video', quiz: 'Quiz', assignment: 'Assignment' };
 
   ngOnInit() {
@@ -156,6 +225,17 @@ export class CourseComponent implements OnInit {
   async load() {
     try {
       this.data = await this.api.api(`/courses/${this.route.snapshot.paramMap.get('slug')}/page`);
+      const course = this.data.course;
+      this.settings = {
+        title: course.title,
+        summary: course.summary,
+        description: course.description,
+        category: course.category,
+        level: course.level,
+        enable_certification: !!course.enable_certification,
+        disable_self_learning: !!course.disable_self_learning,
+        paid: !!course.paid,
+      };
       if (this.api.canTeach()) {
         try {
           this.roster = await this.api.api(`/courses/${this.data.course.id}/roster`);
@@ -165,6 +245,52 @@ export class CourseComponent implements OnInit {
       }
     } catch (err: any) {
       this.error = err.message;
+    }
+  }
+
+  lessonCount() {
+    return (this.data?.outline || []).reduce((sum: number, chapter: any) => sum + (chapter.lessons?.length || 0), 0);
+  }
+
+  async enroll() {
+    this.busy = true;
+    try {
+      await this.api.api(`/courses/${this.data.course.id}/enroll`, { method: 'POST' });
+      this.api.toast('You are enrolled.');
+      await this.load();
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async saveSettings() {
+    this.busy = true;
+    try {
+      this.data.course = await this.api.api(`/studio/courses/${this.data.course.id}`, {
+        method: 'PATCH',
+        body: {
+          ...this.settings,
+          enable_certification: this.settings.enable_certification ? 1 : 0,
+          disable_self_learning: this.settings.disable_self_learning ? 1 : 0,
+          paid: this.settings.paid ? 1 : 0,
+        },
+      });
+      this.api.toast('Course saved.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    } finally {
+      this.busy = false;
+    }
+  }
+
+  async setStatus(status: string) {
+    try {
+      this.data.course = await this.api.api(`/studio/courses/${this.data.course.id}`, { method: 'PATCH', body: { status } });
+      this.api.toast(status === 'published' ? 'Course published.' : 'Course unpublished.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
     }
   }
 

@@ -138,22 +138,20 @@ export class ShellComponent implements OnInit {
     const rows: { to: string; label: string; icon: string }[] = [
       { to: '/', label: 'Home', icon: 'home' },
       { to: '/courses', label: 'Courses', icon: 'courses' },
-      { to: '/batches', label: 'Batches', icon: 'batches' },
-      { to: '/quizzes', label: 'Quizzes', icon: 'quizzes' },
       { to: '/programs', label: 'Programs', icon: 'programs' },
-      { to: '/assignments', label: 'Assignments', icon: 'courses' },
-      { to: '/groups', label: 'Groups', icon: 'groups' },
+      { to: '/batches', label: 'Batches', icon: 'batches' },
+      { to: '/certified-participants', label: 'Certifications', icon: 'admin' },
+      { to: '/job-openings', label: 'Jobs', icon: 'resources' },
     ];
-    if (this.api.isAdmin()) rows.push({ to: '/users', label: 'Users', icon: 'users' });
     if (this.api.canTeach()) {
       rows.push(
-        { to: '/schools', label: 'Schools', icon: 'schools' },
-        { to: '/library', label: 'Resources', icon: 'resources' },
-        { to: '/reports', label: 'Reports', icon: 'reports' },
+        { to: '/quizzes', label: 'Quizzes', icon: 'quizzes' },
+        { to: '/assignments', label: 'Assignments', icon: 'courses' },
+        { to: '/programming-exercises', label: 'Programming Exercises', icon: 'resources' },
         { to: '/statistics', label: 'Statistics', icon: 'reports' },
       );
     }
-    if (this.api.isAdmin()) rows.push({ to: '/admin', label: 'Admin', icon: 'admin' });
+    if (this.api.isAdmin()) rows.push({ to: '/users', label: 'Users', icon: 'users' });
     rows.push({ to: '/help', label: 'Help', icon: 'help' });
     return rows;
   }

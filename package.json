@@ -5,6 +5,6 @@
   "scripts": {
     "dev": "npm --prefix client start",
     "build": "npm --prefix client run build",
-    "server": "php -S 127.0.0.1:8000 -t php php/index.php"
+    "server": "php -S 127.0.0.1:8010 -t php php/index.php"
   }
 }

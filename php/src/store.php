@@ -819,6 +819,12 @@ function update_course(array $user, int $course_id, array $payload): array
     if (array_key_exists('title', $payload) && strlen(trim((string) ($payload['title'] ?? ''))) < 3) {
         throw new \Mirage\AppException(400, 'Give the course a title.');
     }
+    foreach (['disable_self_learning', 'enable_certification', 'paid'] as $key) {
+        if (array_key_exists($key, $payload)) {
+            $fields[] = $key . ' = ?';
+            $args[] = !empty($payload[$key]) ? 1 : 0;
+        }
+    }
     if (array_key_exists('status', $payload)) {
         if (!in_array($payload['status'], ['draft', 'published'], true)) {
             throw new \Mirage\AppException(400, 'Status must be draft or published.');
@@ -1090,15 +1096,21 @@ function assign_course(array $actor, int $course_id, string $email): array
 
 function enroll(array $user, int $course_id): array
 {
-    if ($user['role'] === 'student') {
-        throw new \Mirage\AppException(403, 'A learner opens classes an instructor has assigned.');
-    }
     $db = \Mirage\db();
     $course = course_row($db, $course_id);
     if ($course['status'] !== 'published') {
         throw new \Mirage\AppException(400, 'This course is not open for enrollment.');
     }
-    if (!\Mirage\one($db, 'SELECT id FROM enrollments WHERE course_id = ? AND user_id = ?', [$course_id, $user['id']])) {
+    if ($user['role'] === 'student' && !empty($course['disable_self_learning'])) {
+        throw new \Mirage\AppException(403, 'Contact the administrator to enroll for this course.');
+    }
+    if ($user['role'] === 'student' && !empty($course['paid'])) {
+        throw new \Mirage\AppException(400, 'This course is paid. An instructor enrolls you.');
+    }
+    $existing = \Mirage\one($db, 'SELECT id, COALESCE(active, 1) AS active FROM enrollments WHERE course_id = ? AND user_id = ?', [$course_id, $user['id']]);
+    if ($existing && (int) $existing['active'] === 0) {
+        \Mirage\run($db, 'UPDATE enrollments SET active = 1 WHERE id = ?', [$existing['id']]);
+    } elseif (!$existing) {
         $stamp = \Mirage\app_now();
         \Mirage\run(
             $db,
