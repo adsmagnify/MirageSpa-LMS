@@ -40,16 +40,43 @@ import { pretty as formatPretty } from '../format';
         </nav>
 
         @if (tab === 'overview' || tab === 'classes') {
-          <section class="panel" style="padding: 1rem; margin-bottom: 1rem">
+          <section class="panel stack" style="padding: 1rem; margin-bottom: 1rem">
             <p class="kicker">Live classes</p>
+            @if (api.canTeach()) {
+              <form class="stack" (ngSubmit)="schedule()">
+                <label class="field"><span>Title</span><input [(ngModel)]="live.title" name="liveTitle" required /></label>
+                <div class="row-2">
+                  <label class="field"><span>Starts</span><input [(ngModel)]="live.starts" name="liveStarts" type="datetime-local" required /></label>
+                  <label class="field"><span>Minutes</span><input [(ngModel)]="live.minutes" name="liveMinutes" type="number" min="15" /></label>
+                </div>
+                <label class="field"><span>Meeting link</span><input [(ngModel)]="live.join_url" name="liveLink" type="url" placeholder="https://" /></label>
+                <p class="muted">Paste a Zoom or Meet link. This server is not connected to Zoom, so learners open the link you paste.</p>
+                <button class="btn small" type="submit">Schedule class</button>
+              </form>
+            }
             @if (!data.live_classes.length) {
               <p class="empty">No live class on this batch yet.</p>
             }
             @for (item of data.live_classes; track item.id) {
-              <p class="spread" style="padding: 0.55rem 0; border-bottom: 1px solid var(--line)">
-                <span>{{ item.title }}</span>
-                <span class="muted">{{ pretty(item.starts_at) }} · {{ item.status }}</span>
-              </p>
+              <article class="spread" style="padding: 0.55rem 0; border-bottom: 1px solid var(--line); align-items: center">
+                <div>
+                  <strong>{{ item.title }}</strong>
+                  <p class="muted">{{ pretty(item.starts_at) }} · {{ item.status }} · {{ item.attendance || 0 }} present</p>
+                </div>
+                <div class="actions">
+                  @if (item.zoom_join_url) {
+                    <a class="btn small" [href]="item.zoom_join_url" target="_blank" rel="noopener">Open room</a>
+                  }
+                  @if (api.user && item.status !== 'ended') {
+                    <button class="btn small ghost" type="button" [disabled]="item.attending" (click)="attend(item)">
+                      {{ item.attending ? 'Present' : 'Mark present' }}
+                    </button>
+                  }
+                  @if (api.canTeach() && item.status !== 'ended') {
+                    <button class="btn small ghost" type="button" (click)="endClass(item)">End</button>
+                  }
+                </div>
+              </article>
             }
           </section>
         }
@@ -150,6 +177,7 @@ export class BatchComponent implements OnInit {
   discussions: any[] = [];
   announce: any = { title: '', body: '' };
   comment = '';
+  live = { title: '', starts: '', minutes: 60, join_url: '' };
 
   ngOnInit() {
     this.load();
@@ -193,6 +221,46 @@ export class BatchComponent implements OnInit {
       await this.api.api('/discussions', { method: 'POST', body: { batch_id: Number(id), body: this.comment } });
       this.comment = '';
       this.discussions = await this.api.api(`/batches/${id}/discussions`);
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async schedule() {
+    const id = this.route.snapshot.paramMap.get('id');
+    try {
+      await this.api.api('/live-classes', {
+        method: 'POST',
+        body: {
+          batch_id: Number(id),
+          title: this.live.title,
+          starts_at: new Date(this.live.starts).toISOString(),
+          minutes: Number(this.live.minutes) || 60,
+          join_url: this.live.join_url,
+        },
+      });
+      this.live = { title: '', starts: '', minutes: 60, join_url: '' };
+      this.api.toast('Live class scheduled.');
+      await this.load();
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async attend(item: any) {
+    try {
+      const updated = await this.api.api(`/live-classes/${item.id}/attend`, { method: 'POST' });
+      Object.assign(item, updated);
+      this.api.toast('Marked present.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async endClass(item: any) {
+    try {
+      const updated = await this.api.api(`/live-classes/${item.id}/status`, { method: 'POST', body: { status: 'ended' } });
+      Object.assign(item, updated);
     } catch (err: any) {
       this.api.toast(err.message, 'warn');
     }

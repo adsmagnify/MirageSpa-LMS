@@ -22,6 +22,9 @@ import { ApiService } from '../api.service';
           </article>
         }
       </div>
+      @if (!quizzes.length) {
+        <p class="empty">No quizzes yet. Write one in Resources and place it in a chapter.</p>
+      }
       @if (submissions.length) {
         <section style="margin-top: 28px">
           <h2>Submissions</h2>

@@ -1,10 +1,11 @@
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { ApiService } from '../api.service';
 
 @Component({
   selector: 'app-profile',
-  imports: [RouterLink],
+  imports: [RouterLink, FormsModule],
   template: `
     @if (data) {
       <div class="page">
@@ -13,6 +14,29 @@ import { ApiService } from '../api.service';
         <p class="dek">{{ data.profile.headline }}</p>
         @if (data.profile.email) {
           <p class="muted">{{ data.profile.email }}</p>
+        }
+
+        @if (own) {
+          <form class="card stack" style="max-width: 520px; margin-top: 18px" (ngSubmit)="saveProfile()">
+            <h2>Your details</h2>
+            <label class="field"><span>Name</span><input [(ngModel)]="draft.full_name" name="full_name" required /></label>
+            <label class="field"><span>Headline</span><input [(ngModel)]="draft.headline" name="headline" /></label>
+            <button class="btn small" type="submit">Save</button>
+          </form>
+          <form class="card stack" style="max-width: 520px; margin-top: 14px" (ngSubmit)="changePassword()">
+            <h2>Password</h2>
+            <label class="field"><span>Current password</span><input [(ngModel)]="passwords.current" name="current" type="password" required /></label>
+            <label class="field"><span>New password</span><input [(ngModel)]="passwords.next" name="next" type="password" minlength="4" required /></label>
+            <button class="btn small" type="submit">Change password</button>
+          </form>
+        }
+
+        @if (own && api.canTeach()) {
+          <section class="card stack" style="max-width: 520px; margin-top: 14px">
+            <h2>Evaluation hours</h2>
+            <p class="dek">A learner can book a certificate only when an open time exists. This adds weekday hours for the next two weeks.</p>
+            <button class="btn small" type="button" (click)="publishHours()">Publish hours</button>
+          </section>
         }
 
         <h2 style="margin-top: 24px">Courses</h2>
@@ -57,6 +81,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   api = inject(ApiService);
   route = inject(ActivatedRoute);
   data: any = null;
+  draft = { full_name: '', headline: '' };
+  passwords = { current: '', next: '' };
   private username = '';
   private paramsSub: any;
 
@@ -75,6 +101,44 @@ export class ProfileComponent implements OnInit, OnDestroy {
   async load() {
     this.username = this.route.snapshot.paramMap.get('username') || '';
     this.data = await this.api.api(`/profiles/${this.username}`);
+    this.draft = {
+      full_name: this.data.profile.full_name || '',
+      headline: this.data.profile.headline || '',
+    };
+  }
+
+  get own() {
+    return !!this.api.user && this.api.user.id === this.data?.profile?.id;
+  }
+
+  async saveProfile() {
+    try {
+      const updated = await this.api.api('/me', { method: 'PATCH', body: this.draft });
+      this.api.user = updated;
+      this.data.profile = { ...this.data.profile, ...updated };
+      this.api.toast('Profile saved.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async changePassword() {
+    try {
+      await this.api.api('/me/password', { method: 'POST', body: { current_password: this.passwords.current, password: this.passwords.next } });
+      this.passwords = { current: '', next: '' };
+      this.api.toast('Password changed.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async publishHours() {
+    try {
+      const result = await this.api.api('/evaluations/generate', { method: 'POST' });
+      this.api.toast(result.created ? `Published ${result.created} evaluation times.` : 'Those hours are already on the calendar.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
   }
 
   async decide(request: any, passed: boolean) {

@@ -9,6 +9,9 @@ import { ApiService } from '../api.service';
     <div class="page">
       <h1>Programs</h1>
       <p class="dek">A program is an ordered set of courses. Joining enrolls you in each course, and progress is the average.</p>
+      @if (!programs.length) {
+        <p class="empty">No programs yet.</p>
+      }
       @for (program of programs; track program.id) {
         <article class="panel" style="padding: 16px; margin-top: 16px">
           <div class="spread">

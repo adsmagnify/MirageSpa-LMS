@@ -19,8 +19,12 @@ import { ApiService } from '../api.service';
         }
       </header>
       @if (open) {
-        <form class="panel stack" style="padding: 1rem; margin-bottom: 1rem" (ngSubmit)="create()">
-          <div class="row-2">
+        <form class="maker-form" style="margin-bottom: 8px" (ngSubmit)="create()">
+          <div>
+            <h2>New batch</h2>
+            <p class="dek">A batch gives a course dates, seats, and a live room.</p>
+          </div>
+          <div class="maker-grid">
             <label class="field"><span>Name</span><input [(ngModel)]="form.title" name="title" required /></label>
             <label class="field">
               <span>Course</span>
@@ -31,14 +35,14 @@ import { ApiService } from '../api.service';
                 }
               </select>
             </label>
-          </div>
-          <div class="row-3">
             <label class="field"><span>Starts</span><input [(ngModel)]="form.start_date" name="start_date" type="date" /></label>
             <label class="field"><span>Ends</span><input [(ngModel)]="form.end_date" name="end_date" type="date" /></label>
             <label class="field"><span>Seats</span><input [(ngModel)]="form.seat_limit" name="seat_limit" type="number" min="1" /></label>
+            <label class="field wide"><span>Note</span><textarea [(ngModel)]="form.description" name="description"></textarea></label>
           </div>
-          <label class="field"><span>Note</span><textarea [(ngModel)]="form.description" name="description"></textarea></label>
-          <button class="btn" [disabled]="busy" type="submit">Open batch</button>
+          <div class="maker-actions">
+            <button class="btn" [disabled]="busy" type="submit">Open batch</button>
+          </div>
         </form>
       }
       @if (error) {
@@ -60,6 +64,9 @@ import { ApiService } from '../api.service';
             </a>
           }
         </div>
+        @if (!batches.length) {
+          <p class="empty">No batches yet. An instructor opens one when a class has dates and a live room.</p>
+        }
       }
     </div>
   `,

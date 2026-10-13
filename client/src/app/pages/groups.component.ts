@@ -14,27 +14,35 @@ import { ApiService } from '../api.service';
           <p class="dek">School groups keep a class, a clinic team, or a staff circle in one conversation.</p>
         </div>
       </header>
-      <div class="cards">
+      <div class="maker">
         @if (api.canTeach()) {
-          <form class="card stack" (ngSubmit)="create()">
-            <h2>New group</h2>
-            <label class="field"><span>Name</span><input [(ngModel)]="form.name" name="name" required /></label>
-            <label class="field"><span>Description</span><textarea [(ngModel)]="form.description" name="description" rows="3"></textarea></label>
-            <button class="btn" type="submit">Create group</button>
+          <form class="maker-form" (ngSubmit)="create()">
+            <div>
+              <h2>New group</h2>
+              <p class="dek">A group is a conversation for a class, a clinic team, or the staff.</p>
+            </div>
+            <div class="maker-grid">
+              <label class="field wide"><span>Name</span><input [(ngModel)]="form.name" name="name" required /></label>
+              <label class="field wide"><span>Description</span><textarea [(ngModel)]="form.description" name="description" rows="3"></textarea></label>
+            </div>
+            <div class="maker-actions">
+              <button class="btn" type="submit">Create group</button>
+            </div>
           </form>
         }
-        <section class="stack">
-          @for (group of groups; track group.id) {
-            <a class="card widget-row" [routerLink]="'/groups/' + group.id">
-              <span>
-                <strong>{{ group.name }}</strong>
-                <small class="muted">{{ group.owner_name }} · {{ group.members || 0 }} people</small>
-              </span>
-            </a>
-          }
+        <section>
+          <h2>Groups</h2>
           @if (!groups.length) {
             <p class="empty">You are not a member of any group.</p>
           }
+          <div class="maker-list">
+            @for (group of groups; track group.id) {
+              <a class="card" style="padding: 16px" [routerLink]="'/groups/' + group.id">
+                <h3>{{ group.name }}</h3>
+                <p class="muted">{{ group.owner_name }} · {{ group.members || 0 }} people</p>
+              </a>
+            }
+          </div>
         </section>
       </div>
     </div>

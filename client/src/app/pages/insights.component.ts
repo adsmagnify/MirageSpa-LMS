@@ -16,22 +16,38 @@ import { pretty as formatPretty, shortDay as formatShortDay } from '../format';
             <p class="dek">Refreshed every few seconds. Last count {{ pretty(data.generated_at) }}.</p>
           </div>
         </header>
-        <section class="kpis">
-          <article class="panel kpi"><span class="muted">Signups, 14 days</span><strong>{{ data.signups_14d }}</strong></article>
-          <article class="panel kpi"><span class="muted">Enrollments, 14 days</span><strong>{{ data.enrollments_14d }}</strong></article>
-          <article class="panel kpi"><span class="muted">Quiz passes</span><strong>{{ data.quiz_passes }}/{{ data.quiz_attempts }}</strong></article>
-          <article class="panel kpi"><span class="muted">Live joins</span><strong>{{ data.live_joins }}</strong></article>
+        <section class="stat-kpis">
+          <article>
+            <span>Signups</span>
+            <strong>{{ data.signups_14d }}</strong>
+            <small>Last 14 days</small>
+          </article>
+          <article>
+            <span>Enrollments</span>
+            <strong>{{ data.enrollments_14d }}</strong>
+            <small>Last 14 days</small>
+          </article>
+          <article>
+            <span>Quiz passes</span>
+            <strong>{{ data.quiz_passes }}<em>/ {{ data.quiz_attempts }}</em></strong>
+            <small>Passed of attempted</small>
+          </article>
+          <article>
+            <span>Live joins</span>
+            <strong>{{ data.live_joins }}</strong>
+            <small>People who entered a class</small>
+          </article>
         </section>
 
-        <section class="panel" style="padding: 1rem; margin-top: 1rem">
+        <section class="panel stat-chart">
           <div class="spread">
-            <h3>Fourteen days</h3>
-            <p class="legend"><span><i class="signup"></i>Signups</span><span><i class="enroll"></i>Enrollments</span></p>
+            <h2>Fourteen days</h2>
+            <p class="stat-legend"><span><i class="signup"></i>Signups</span><span><i class="enroll"></i>Enrollments</span></p>
           </div>
-          <div class="chart" style="margin-top: 0.8rem">
+          <div class="stat-bars">
             @for (point of data.series; track point.day) {
-              <div class="col">
-                <div class="pair">
+              <div class="stat-col">
+                <div class="stat-pair">
                   <i class="signup" [style.height]="height(point.signups)" [title]="point.signups + ' signups'"></i>
                   <i class="enroll" [style.height]="height(point.enrollments)" [title]="point.enrollments + ' enrollments'"></i>
                 </div>
@@ -41,37 +57,48 @@ import { pretty as formatPretty, shortDay as formatShortDay } from '../format';
           </div>
         </section>
 
-        <section class="cards" style="margin-top: 1rem; align-items: start">
-          <article class="panel table-wrap" style="padding: 0.6rem 1rem 1rem">
+        <section class="stat-split">
+          <article class="panel stat-table">
             <p class="kicker">Courses</p>
-            <table>
-              <thead><tr><th>Course</th><th>Enrolled</th><th>Avg progress</th></tr></thead>
-              <tbody>
-                @for (course of data.courses; track course.id) {
-                  <tr>
-                    <td><a [routerLink]="['/courses', course.slug]">{{ course.title }}</a><div class="muted">{{ course.status }}</div></td>
-                    <td>{{ course.enrollments }}</td>
-                    <td style="min-width: 120px"><div class="bar"><span [style.width]="course.avg_progress + '%'"></span></div></td>
-                  </tr>
-                }
-              </tbody>
-            </table>
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Course</th><th>Enrolled</th><th>Average progress</th></tr></thead>
+                <tbody>
+                  @for (course of data.courses; track course.id) {
+                    <tr>
+                      <td><a [routerLink]="['/courses', course.slug]">{{ course.title }}</a><div class="muted">{{ course.status }}</div></td>
+                      <td>{{ course.enrollments }}</td>
+                      <td>
+                        <div class="stat-progress">
+                          <div class="bar"><span [style.width]="course.avg_progress + '%'"></span></div>
+                          <span>{{ course.avg_progress }}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
           </article>
-          <article class="panel" style="padding: 1rem">
+          <article class="panel stat-feed">
             <p class="kicker">Just happened</p>
             @for (item of data.feed; track $index) {
-              <p style="padding: 0.55rem 0; border-bottom: 1px solid var(--line)">
+              <p class="happened">
                 <strong>{{ item.full_name || 'New account' }}</strong>
-                {{ item.kind === 'signup' ? 'joined the academy' : 'enrolled in ' + item.course_title }}
-                <span class="muted"> · {{ pretty(item.created_at) }}</span>
+                <span>{{ item.kind === 'signup' ? 'joined the academy' : 'enrolled in ' + item.course_title }}</span>
+                <small>{{ pretty(item.created_at) }}</small>
               </p>
+            }
+            @if (!data.feed.length) {
+              <p class="empty">Nothing recorded yet.</p>
             }
           </article>
         </section>
 
         @if (people.length) {
-          <section class="panel table-wrap" style="padding: 0.6rem 1rem 1rem; margin-top: 1rem">
+          <section class="panel stat-table stat-accounts">
             <p class="kicker">Accounts</p>
+            <div class="table-wrap">
             <table>
               <thead><tr><th>Name</th><th>Email</th><th>Role</th></tr></thead>
               <tbody>
@@ -91,6 +118,7 @@ import { pretty as formatPretty, shortDay as formatShortDay } from '../format';
                 }
               </tbody>
             </table>
+            </div>
           </section>
         }
       </div>

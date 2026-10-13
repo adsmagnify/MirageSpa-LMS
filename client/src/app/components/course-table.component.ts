@@ -20,7 +20,11 @@ import { ApiService } from '../api.service';
         <article class="course-row">
           <span class="row-no">{{ (currentPage() - 1) * pageSize + index + 1 }}</span>
           <a class="course-name" [routerLink]="['/courses', row.slug]">
-            <span class="thumb" [style.background]="tone(row.title)">{{ letter(row.title) }}</span>
+            @if (row.thumbnail) {
+              <img class="thumb photo" [src]="thumbSrc(row)" [alt]="row.title" [style.object-position]="focus(row)" />
+            } @else {
+              <span class="thumb" [style.background]="tone(row.title)">{{ letter(row.title) }}</span>
+            }
             <span>
               <strong>{{ row.title }}</strong>
               <small>{{ when(row) }}@if (row.product_code) { · {{ row.product_code }} }</small>
@@ -38,8 +42,24 @@ import { ApiService } from '../api.service';
               <button type="button" aria-label="Course actions" (click)="openMenu = openMenu === row.id ? null : row.id">⋯</button>
               @if (openMenu === row.id) {
                 <div class="pop menu">
+                  <button type="button" (click)="beginAdjust(row)">Adjust picture</button>
                   <button type="button" (click)="copy(row)">Copy course</button>
                   <button type="button" (click)="trash(row)">Move to trash</button>
+                </div>
+              }
+              @if (adjustId === row.id) {
+                <div class="adjust-pop">
+                  <p class="muted">Drag the photo to choose what shows.</p>
+                  @if (row.thumbnail) {
+                    <div class="adjust-frame" (pointerdown)="dragFocus($event, row)">
+                      <img [src]="thumbSrc(row)" [alt]="row.title" [style.object-position]="focus(row)" />
+                    </div>
+                  }
+                  <label class="btn small ghost">
+                    {{ row.thumbnail ? 'Replace photo' : 'Choose photo' }}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="replaceThumb($event, row)" />
+                  </label>
+                  <button class="btn small" type="button" (click)="adjustId = null">Done</button>
                 </div>
               }
             </div>
@@ -69,6 +89,7 @@ export class CourseTableComponent {
   q = '';
   page = 1;
   openMenu: number | null = null;
+  adjustId: number | null = null;
   pageSize = 6;
 
   filtered() {
@@ -120,6 +141,72 @@ export class CourseTableComponent {
     let n = 0;
     for (const ch of title || '') n += ch.charCodeAt(0);
     return tones[n % tones.length];
+  }
+
+  thumbSrc(row: any) {
+    return `/api/courses/${row.id}/thumbnail?v=${encodeURIComponent(row.thumbnail || '')}`;
+  }
+
+  focus(row: any) {
+    return `${row.thumb_x ?? 50}% ${row.thumb_y ?? 50}%`;
+  }
+
+  beginAdjust(row: any) {
+    this.openMenu = null;
+    this.adjustId = row.id;
+    if (row.thumb_x == null) row.thumb_x = 50;
+    if (row.thumb_y == null) row.thumb_y = 50;
+  }
+
+  dragFocus(event: PointerEvent, row: any) {
+    const frame = event.currentTarget as HTMLElement;
+    const place = (ev: PointerEvent) => {
+      const box = frame.getBoundingClientRect();
+      row.thumb_x = Math.max(0, Math.min(100, Math.round(((ev.clientX - box.left) / box.width) * 100)));
+      row.thumb_y = Math.max(0, Math.min(100, Math.round(((ev.clientY - box.top) / box.height) * 100)));
+    };
+    const move = (ev: PointerEvent) => place(ev);
+    const up = () => {
+      frame.removeEventListener('pointermove', move);
+      frame.removeEventListener('pointerup', up);
+      this.saveFocus(row);
+    };
+    frame.setPointerCapture(event.pointerId);
+    frame.addEventListener('pointermove', move);
+    frame.addEventListener('pointerup', up);
+    place(event);
+  }
+
+  async saveFocus(row: any) {
+    try {
+      const course = await this.api.api(`/studio/courses/${row.id}/thumbnail`, {
+        method: 'PATCH',
+        body: { x: row.thumb_x, y: row.thumb_y },
+      });
+      row.thumb_x = course.thumb_x;
+      row.thumb_y = course.thumb_y;
+    } catch (error: any) {
+      this.api.toast(error.message, 'warn');
+    }
+  }
+
+  async replaceThumb(event: Event, row: any) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    try {
+      const course = await this.api.api(`/studio/courses/${row.id}/thumbnail`, { method: 'POST', body, form: true });
+      row.thumbnail = course.thumbnail;
+      row.thumb_x = course.thumb_x;
+      row.thumb_y = course.thumb_y;
+      this.api.toast('Picture saved.');
+    } catch (error: any) {
+      this.api.toast(error.message, 'warn');
+    } finally {
+      input.value = '';
+    }
   }
 
   async copy(row: any) {

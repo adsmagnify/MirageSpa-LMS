@@ -13,6 +13,7 @@ import { ApiService } from '../api.service';
             <h1>Reports</h1>
             <p class="dek">Progress across the classes you teach. Completed means every lesson in that course is finished.</p>
           </div>
+          <button class="btn" type="button" (click)="download()" [disabled]="!data.courses.length">Download spreadsheet</button>
         </header>
         <div class="stat-row">
           <article class="card"><span>Courses</span><strong>{{ data.totals.courses }}</strong></article>
@@ -51,5 +52,18 @@ export class ReportsComponent implements OnInit {
 
   async load() {
     this.data = await this.api.api('/reports');
+  }
+
+  download() {
+    const rows = [
+      ['Course', 'Learners', 'Completed', 'Average progress', 'To score'],
+      ...this.data.courses.map((row: any) => [row.title, row.learners, row.completed, row.average_progress, row.to_score]),
+    ];
+    const csv = rows.map((cols) => cols.map((value: any) => `"${String(value ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+    link.download = 'mirage-reports.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
   }
 }

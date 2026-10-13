@@ -14,13 +14,14 @@ import { ApiService } from '../api.service';
         </div>
       </header>
 
-      <form class="panel stack" style="padding: 16px; margin-bottom: 16px" (ngSubmit)="create()">
-        <h2>New account</h2>
-        <div class="row-2">
+      <form class="maker-form" style="margin-bottom: 18px" (ngSubmit)="create()">
+        <div>
+          <h2>New account</h2>
+          <p class="dek">Tell this person the password. The site does not send email.</p>
+        </div>
+        <div class="maker-grid">
           <label class="field"><span>Name</span><input [(ngModel)]="form.full_name" name="fullName" required /></label>
           <label class="field"><span>Email</span><input [(ngModel)]="form.email" name="email" type="email" required /></label>
-        </div>
-        <div class="row-2">
           <label class="field"><span>Password</span><input [(ngModel)]="form.password" name="password" type="text" minlength="4" required /></label>
           <label class="field">
             <span>Role</span>
@@ -31,12 +32,14 @@ import { ApiService } from '../api.service';
             </select>
           </label>
         </div>
-        <button class="btn" type="submit" [disabled]="busy">Create account</button>
+        <div class="maker-actions">
+          <button class="btn" type="submit" [disabled]="busy">Create account</button>
+        </div>
       </form>
 
       <table>
         <thead>
-          <tr><th>Name</th><th>Email</th><th>Role</th></tr>
+          <tr><th>Name</th><th>Email</th><th>Role</th><th>New password</th></tr>
         </thead>
         <tbody>
           @for (person of people; track person.id) {
@@ -50,6 +53,12 @@ import { ApiService } from '../api.service';
                   <option value="admin">Administrator</option>
                 </select>
               </td>
+              <td>
+                <form class="news-form" (ngSubmit)="resetPassword(person)">
+                  <input [(ngModel)]="passwords[person.id]" [name]="'password-' + person.id" type="text" minlength="4" placeholder="New password" aria-label="New password" />
+                  <button class="btn small" type="submit">Set</button>
+                </form>
+              </td>
             </tr>
           }
         </tbody>
@@ -62,6 +71,7 @@ export class UsersComponent implements OnInit {
   people: any[] = [];
   busy = false;
   form: any = { full_name: '', email: '', password: '', role: 'student' };
+  passwords: Record<number, string> = {};
   roleName: any = {
     admin: 'Administrator',
     instructor: 'Instructor',
@@ -88,6 +98,21 @@ export class UsersComponent implements OnInit {
       this.api.toast(error.message, 'warn');
     } finally {
       this.busy = false;
+    }
+  }
+
+  async resetPassword(person: any) {
+    const password = (this.passwords[person.id] || '').trim();
+    if (password.length < 4) {
+      this.api.toast('Use at least 4 characters.', 'warn');
+      return;
+    }
+    try {
+      await this.api.api(`/users/${person.id}`, { method: 'PATCH', body: { password } });
+      this.passwords[person.id] = '';
+      this.api.toast(`Password updated for ${person.full_name}. Tell them the new one.`);
+    } catch (error: any) {
+      this.api.toast(error.message, 'warn');
     }
   }
 

@@ -146,6 +146,14 @@ function dispatch(): mixed
     if (route_is('GET', '/api/auth/me') !== null) {
         return require_user();
     }
+    if (route_is('PATCH', '/api/me') !== null) {
+        $payload = body();
+        return \Mirage\Store\update_profile(require_user(), (string) ($payload['full_name'] ?? ''), (string) ($payload['headline'] ?? ''));
+    }
+    if (route_is('POST', '/api/me/password') !== null) {
+        $payload = body();
+        return \Mirage\Store\change_password(require_user(), (string) ($payload['current_password'] ?? ''), (string) ($payload['password'] ?? ''));
+    }
     if (route_is('GET', '/api/categories') !== null) {
         return \Mirage\Store\categories();
     }
@@ -200,6 +208,21 @@ function dispatch(): mixed
     }
     if (($p = route_is('PATCH', '/api/studio/courses/{course_id}')) !== null) {
         return \Mirage\Store\update_course(require_user(), (int) $p['course_id'], body());
+    }
+    if (($p = route_is('PATCH', '/api/studio/courses/{course_id}/thumbnail')) !== null) {
+        $payload = body();
+        return \Mirage\Store\set_thumbnail_focus(require_user(), (int) $p['course_id'], (int) ($payload['x'] ?? 50), (int) ($payload['y'] ?? 50));
+    }
+    if (($p = route_is('POST', '/api/studio/courses/{course_id}/thumbnail')) !== null) {
+        $file = $_FILES['file'] ?? null;
+        if (!is_array($file)) {
+            throw new AppException(400, 'Choose an image.');
+        }
+        return \Mirage\Store\set_thumbnail(require_user(), (int) $p['course_id'], $file);
+    }
+    if (($p = route_is('GET', '/api/courses/{course_id}/thumbnail')) !== null) {
+        [$path, $name, $mime] = \Mirage\Store\thumbnail_file((int) $p['course_id']);
+        return new FileDownload($path, $name, $mime);
     }
     if (route_is('POST', '/api/studio/chapters') !== null) {
         $payload = body();
@@ -381,7 +404,18 @@ function dispatch(): mixed
             throw new AppException(403, 'Only an administrator can change roles.');
         }
         $payload = body();
-        return \Mirage\Store\set_role((int) $p['user_id'], (string) ($payload['role'] ?? ''));
+        $id = (int) $p['user_id'];
+        if (trim((string) ($payload['password'] ?? '')) !== '') {
+            \Mirage\Store\set_password($id, (string) $payload['password']);
+        }
+        if (trim((string) ($payload['role'] ?? '')) !== '') {
+            return \Mirage\Store\set_role($id, (string) $payload['role']);
+        }
+        $row = \Mirage\one(\Mirage\db(), 'SELECT * FROM users WHERE id = ?', [$id]);
+        if (!$row) {
+            throw new AppException(404, 'Person not found.');
+        }
+        return \Mirage\public_user($row);
     }
     if (($p = route_is('POST', '/api/notes/{lesson_id}')) !== null) {
         $payload = body();

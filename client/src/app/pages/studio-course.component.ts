@@ -25,21 +25,33 @@ import { ApiService } from '../api.service';
           </div>
         </header>
 
-        <div class="cards" style="align-items: start">
-          <form class="panel stack" style="padding: 1rem" (ngSubmit)="saveMeta()">
-            <h3>The course</h3>
-            <label class="field"><span>Title</span><input [(ngModel)]="meta.title" name="title" required /></label>
-            <label class="field"><span>Summary</span><input [(ngModel)]="meta.summary" name="summary" /></label>
-            <label class="field"><span>Description</span><textarea [(ngModel)]="meta.description" name="description"></textarea></label>
-            <div class="row-2">
+        <div class="editor">
+          <form class="maker-form" (ngSubmit)="saveMeta()">
+            <h2>The course</h2>
+            <div class="maker-grid">
+              <label class="field wide"><span>Title</span><input [(ngModel)]="meta.title" name="title" required /></label>
               <label class="field"><span>Category</span><input [(ngModel)]="meta.category" name="category" /></label>
               <label class="field"><span>Level</span><input [(ngModel)]="meta.level" name="level" /></label>
+              <label class="field wide"><span>Summary</span><input [(ngModel)]="meta.summary" name="summary" /></label>
+              <label class="field wide"><span>Description</span><textarea [(ngModel)]="meta.description" name="description"></textarea></label>
+              <label class="field wide">
+                <span>Thumbnail</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" (change)="setThumb($event)" />
+              </label>
             </div>
-            <button class="btn small" type="submit" [disabled]="busy">Save</button>
+            @if (data.course.thumbnail) {
+              <div class="adjust-frame" (pointerdown)="dragFocus($event)">
+                <img [src]="thumbUrl()" alt="" [style.object-position]="focusStyle()" />
+              </div>
+              <p class="muted">Drag the photo to choose what shows.</p>
+            }
+            <div class="maker-actions">
+              <button class="btn" type="submit" [disabled]="busy">Save</button>
+            </div>
           </form>
 
           <div class="stack">
-            <article class="panel" style="padding: 1rem">
+            <article class="maker-form">
               <h3>Outline</h3>
               @for (chapter of data.chapters; track chapter.id) {
                 <div style="margin-top: 0.7rem">
@@ -65,9 +77,9 @@ import { ApiService } from '../api.service';
           </div>
         </div>
 
-        <form class="panel stack" style="padding: 1rem; margin-top: 1rem" (ngSubmit)="addLesson()">
-          <h3>Add a lesson</h3>
-          <div class="row-3">
+        <form class="maker-form" style="margin-top: 16px" (ngSubmit)="addLesson()">
+          <h2>Add a lesson</h2>
+          <div class="maker-grid thirds">
             <label class="field">
               <span>Chapter</span>
               <select [(ngModel)]="lesson.chapter_id" name="chapter" required>
@@ -153,6 +165,65 @@ export class StudioCourseComponent implements OnInit {
       if (!this.lesson.chapter_id && this.data.chapters[0]) this.lesson.chapter_id = this.data.chapters[0].id;
     } catch (err: any) {
       this.error = err.message;
+    }
+  }
+
+  focusStyle() {
+    return `${this.data?.course?.thumb_x ?? 50}% ${this.data?.course?.thumb_y ?? 50}%`;
+  }
+
+  dragFocus(event: PointerEvent) {
+    const frame = event.currentTarget as HTMLElement;
+    const place = (ev: PointerEvent) => {
+      const box = frame.getBoundingClientRect();
+      this.data.course.thumb_x = Math.max(0, Math.min(100, Math.round(((ev.clientX - box.left) / box.width) * 100)));
+      this.data.course.thumb_y = Math.max(0, Math.min(100, Math.round(((ev.clientY - box.top) / box.height) * 100)));
+    };
+    const move = (ev: PointerEvent) => place(ev);
+    const up = () => {
+      frame.removeEventListener('pointermove', move);
+      frame.removeEventListener('pointerup', up);
+      this.saveFocus();
+    };
+    frame.setPointerCapture(event.pointerId);
+    frame.addEventListener('pointermove', move);
+    frame.addEventListener('pointerup', up);
+    place(event);
+  }
+
+  async saveFocus() {
+    try {
+      const course = await this.api.api(`/studio/courses/${this.data.course.id}/thumbnail`, {
+        method: 'PATCH',
+        body: { x: this.data.course.thumb_x, y: this.data.course.thumb_y },
+      });
+      this.data.course.thumb_x = course.thumb_x;
+      this.data.course.thumb_y = course.thumb_y;
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  thumbUrl() {
+    const stamp = this.data?.course?.thumbnail || '';
+    return `/api/courses/${this.data.course.id}/thumbnail?v=${encodeURIComponent(stamp)}`;
+  }
+
+  async setThumb(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    this.busy = true;
+    try {
+      this.data.course = await this.api.api(`/studio/courses/${this.route.snapshot.paramMap.get('id')}/thumbnail`, { method: 'POST', body, form: true });
+      this.api.toast('Thumbnail saved.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    } finally {
+      this.busy = false;
+      input.value = '';
     }
   }
 

@@ -21,31 +21,43 @@ import { ApiService } from '../api.service';
         <button class="chip" [class.on]="filter === 'quiz'" type="button" (click)="filter = 'quiz'">Quizzes</button>
       </div>
 
-      <div class="cards" style="align-items: start">
+      <div class="maker">
         @if (filter !== 'quiz') {
-          <form class="panel stack" style="padding: 16px" (ngSubmit)="sendFile()">
-            <h2>Upload a file</h2>
-            <label class="field">
-              <span>Kind</span>
-              <select [(ngModel)]="upload.kind" name="kind">
-                <option value="document">Document</option>
-                <option value="video">Video</option>
-              </select>
-            </label>
-            <label class="field"><span>Title</span><input [(ngModel)]="upload.title" name="title" placeholder="What learners will see" /></label>
-            <label class="field">
-              <span>{{ upload.kind === 'video' ? 'Video file' : 'Document' }}</span>
-              @for (slot of [upload.kind + '-' + fileKey]; track slot) {
-                <input type="file" [accept]="upload.kind === 'video' ? '.mp4,.webm,.mov,.m4v' : '.pdf,.txt,.doc,.docx,.ppt,.pptx'" required (change)="onFile($event)" />
-              }
-            </label>
-            <button class="btn" type="submit" [disabled]="busy">Add to library</button>
+          <form class="maker-form" (ngSubmit)="sendFile()">
+            <div>
+              <h2>Upload a file</h2>
+              <p class="dek">Add a document or a lesson video, then place it in a chapter.</p>
+            </div>
+            <div class="maker-grid">
+              <label class="field">
+                <span>Kind</span>
+                <select [(ngModel)]="upload.kind" name="kind">
+                  <option value="document">Document</option>
+                  <option value="video">Video</option>
+                </select>
+              </label>
+              <label class="field"><span>Title</span><input [(ngModel)]="upload.title" name="title" placeholder="What learners will see" /></label>
+              <label class="field wide">
+                <span>{{ upload.kind === 'video' ? 'Video file' : 'Document' }}</span>
+                @for (slot of [upload.kind + '-' + fileKey]; track slot) {
+                  <input type="file" [accept]="upload.kind === 'video' ? '.mp4,.webm,.mov,.m4v' : '.pdf,.txt,.doc,.docx,.ppt,.pptx'" required (change)="onFile($event)" />
+                }
+              </label>
+            </div>
+            <div class="maker-actions">
+              <button class="btn" type="submit" [disabled]="busy">Add to library</button>
+            </div>
           </form>
         } @else {
-          <form class="panel stack" style="padding: 16px" (ngSubmit)="sendQuiz()">
-            <h2>Write a quiz</h2>
-            <label class="field"><span>Title</span><input [(ngModel)]="quiz.title" name="quizTitle" required /></label>
-            <label class="field"><span>Passing score</span><input [(ngModel)]="quiz.passing_score" name="passingScore" type="number" min="1" max="100" /></label>
+          <form class="maker-form" (ngSubmit)="sendQuiz()">
+            <div>
+              <h2>Write a quiz</h2>
+              <p class="dek">Each question needs a prompt and one marked correct choice.</p>
+            </div>
+            <div class="maker-grid">
+              <label class="field"><span>Title</span><input [(ngModel)]="quiz.title" name="quizTitle" required /></label>
+              <label class="field"><span>Passing score</span><input [(ngModel)]="quiz.passing_score" name="passingScore" type="number" min="1" max="100" /></label>
+            </div>
             @for (question of quiz.questions; track $index; let qIndex = $index) {
               <article class="stack">
                 <label class="field"><span>Question {{ qIndex + 1 }}</span><input [(ngModel)]="question.prompt" name="prompt-{{ qIndex }}" required /></label>
@@ -59,11 +71,13 @@ import { ApiService } from '../api.service';
               </article>
             }
             <button class="btn small ghost" type="button" (click)="addQuestion()">Add a question</button>
-            <button class="btn" type="submit" [disabled]="busy">Add quiz</button>
+            <div class="maker-actions">
+              <button class="btn" type="submit" [disabled]="busy">Add quiz</button>
+            </div>
           </form>
         }
 
-        <section class="stack">
+        <section>
           @for (item of visible; track item.id) {
             <article class="panel stack" style="padding: 14px">
               <div class="spread">

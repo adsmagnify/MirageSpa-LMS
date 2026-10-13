@@ -11,6 +11,7 @@ import { CourseTableComponent } from '../components/course-table.component';
     @if (data) {
       <div class="desk">
         <div class="desk-main">
+          <p class="kicker">School desk</p>
           <h1>{{ data.school?.name || 'School' }}</h1>
           <section class="card">
             <header class="spread">

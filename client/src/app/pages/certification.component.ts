@@ -25,11 +25,15 @@ import { ApiService } from '../api.service';
         }
 
         @if (data.certificate) {
-          <article class="certificate">
-            <p class="kicker">LMS Certificate</p>
+          <article class="certificate-sheet">
+            <img src="logo.webp" alt="Mirage Education" />
+            <p class="kicker">Certificate of completion</p>
             <h2>{{ data.certificate.member_name || api.user.full_name }}</h2>
-            <p>{{ data.course.title }}</p>
+            <p>has completed</p>
+            <p class="cert-title">{{ data.course.title }}</p>
+            <p class="muted">Issued {{ data.certificate.issue_date.slice(0, 10) }}</p>
           </article>
+          <button class="btn no-print" style="margin-top: 16px" type="button" (click)="print()">Print certificate</button>
         } @else if (data.request) {
           <article class="panel" style="padding: 14px; margin-top: 16px">
             <p class="kicker">Evaluation</p>
@@ -67,6 +71,10 @@ export class CertificationComponent implements OnInit {
       return;
     }
     this.data = await this.api.api(`/courses/${this.route.snapshot.paramMap.get('slug')}/certification`);
+  }
+
+  print() {
+    window.print();
   }
 
   async request() {

@@ -15,32 +15,40 @@ import { ApiService } from '../api.service';
           <p class="dek">A draft stays private. Publish it, then share the course link.</p>
         </div>
       </header>
-      <div class="cards" style="align-items: start">
-        <form class="panel stack" style="padding: 1rem" (ngSubmit)="create()">
-          <h3>New course</h3>
-          <label class="field"><span>Title</span><input [(ngModel)]="form.title" name="title" required /></label>
-          <label class="field"><span>Summary</span><input [(ngModel)]="form.summary" name="summary" /></label>
-          <label class="field"><span>Description</span><textarea [(ngModel)]="form.description" name="description"></textarea></label>
-          <div class="row-2">
+      <div class="maker">
+        <form class="maker-form" (ngSubmit)="create()">
+          <div>
+            <h2>New course</h2>
+            <p class="dek">Name the class. You add lessons after the draft opens.</p>
+          </div>
+          <div class="maker-grid">
+            <label class="field wide"><span>Title</span><input [(ngModel)]="form.title" name="title" required /></label>
             <label class="field"><span>Category</span><input [(ngModel)]="form.category" name="category" /></label>
             <label class="field"><span>Level</span><input [(ngModel)]="form.level" name="level" /></label>
+            <label class="field wide"><span>Summary</span><input [(ngModel)]="form.summary" name="summary" /></label>
+            <label class="field wide"><span>Description</span><textarea [(ngModel)]="form.description" name="description"></textarea></label>
           </div>
-          <button class="btn" type="submit" [disabled]="busy">Create draft</button>
+          <div class="maker-actions">
+            <button class="btn" type="submit" [disabled]="busy">Create draft</button>
+          </div>
         </form>
-        <div class="stack">
-          @for (course of courses; track course.id) {
-            <a class="panel" style="padding: 0.9rem; text-decoration: none" [routerLink]="['/studio', course.id]">
-              <div class="spread">
-                <h3>{{ course.title }}</h3>
-                <span class="pill" [class.good]="course.status === 'published'" [class.warn]="course.status !== 'published'">{{ course.status }}</span>
-              </div>
-              <p class="muted">{{ course.lesson_count }} lessons · {{ course.learners }} enrolled</p>
-            </a>
-          }
+        <section>
+          <h2>Your courses</h2>
           @if (!courses.length) {
             <p class="empty">No courses in your studio yet.</p>
           }
-        </div>
+          <div class="maker-list">
+            @for (course of courses; track course.id) {
+              <a class="panel" style="padding: 16px; text-decoration: none" [routerLink]="['/studio', course.id]">
+                <div class="spread">
+                  <h3>{{ course.title }}</h3>
+                  <span class="pill" [class.good]="course.status === 'published'" [class.warn]="course.status !== 'published'">{{ course.status }}</span>
+                </div>
+                <p class="muted">{{ course.lesson_count }} lessons · {{ course.learners }} enrolled</p>
+              </a>
+            }
+          </div>
+        </section>
       </div>
     </div>
   `,

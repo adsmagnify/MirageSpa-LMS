@@ -48,6 +48,9 @@ SQL);
     _column($db, 'courses', 'starts_on', 'starts_on TEXT');
     _column($db, 'courses', 'ends_on', 'ends_on TEXT');
     _column($db, 'courses', 'product_code', "product_code TEXT DEFAULT ''");
+    _column($db, 'courses', 'thumbnail', "thumbnail TEXT DEFAULT ''");
+    _column($db, 'courses', 'thumb_x', 'thumb_x INTEGER NOT NULL DEFAULT 50');
+    _column($db, 'courses', 'thumb_y', 'thumb_y INTEGER NOT NULL DEFAULT 50');
     _column($db, 'enrollments', 'active', 'active INTEGER NOT NULL DEFAULT 1');
     _column($db, 'library_items', 'deleted_at', 'deleted_at TEXT');
     if (!\Mirage\one($db, 'SELECT id FROM schools')) {
@@ -167,6 +170,9 @@ function _course_card(\PDO $db, array $row, array $user): array
         'starts_on' => _or($row['starts_on'] ?? null, ''),
         'ends_on' => _or($row['ends_on'] ?? null, ''),
         'product_code' => _or($row['product_code'] ?? null, ''),
+        'thumbnail' => (string) ($row['thumbnail'] ?? ''),
+        'thumb_x' => (int) ($row['thumb_x'] ?? 50),
+        'thumb_y' => (int) ($row['thumb_y'] ?? 50),
         'parent_id' => $row['parent_id'] ?? null,
         'can_edit' => (bool) \Mirage\Store\can_edit_course($user, $row),
     ], _stats($db, (int) $row['id']));

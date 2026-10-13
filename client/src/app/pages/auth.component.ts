@@ -9,6 +9,11 @@ import { ApiService } from '../api.service';
   template: `
     <div class="auth-wrap">
       @if (ready) {
+        <aside class="auth-brand">
+          <img class="brand-logo" src="logo.webp" alt="Mirage Education" />
+          <p class="auth-display">A quiet desk for the school.</p>
+          <p>Courses, assigned classes, and the people who teach them.</p>
+        </aside>
         <div class="auth">
           <section class="auth-panel">
             <h1>{{ needsSetup ? 'Set up the administrator' : 'Sign in' }}</h1>

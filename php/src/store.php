@@ -482,6 +482,46 @@ function set_role(int $user_id, string $role): array
     return \Mirage\public_user(\Mirage\one($db, 'SELECT * FROM users WHERE id = ?', [$user_id]));
 }
 
+function set_password(int $user_id, string $password): array
+{
+    $password = trim($password);
+    if (strlen($password) < 4) {
+        throw new \Mirage\AppException(400, 'Use at least 4 characters.');
+    }
+    $db = \Mirage\db();
+    $target = \Mirage\one($db, 'SELECT * FROM users WHERE id = ?', [$user_id]);
+    if (!$target) {
+        throw new \Mirage\AppException(404, 'Person not found.');
+    }
+    \Mirage\run($db, 'UPDATE users SET password_hash = ? WHERE id = ?', [\Mirage\hash_password($password), $user_id]);
+    return \Mirage\public_user(\Mirage\one($db, 'SELECT * FROM users WHERE id = ?', [$user_id]));
+}
+
+function change_password(array $user, string $current, string $password): array
+{
+    $db = \Mirage\db();
+    $row = \Mirage\one($db, 'SELECT * FROM users WHERE id = ?', [$user['id']]);
+    if (!$row || !\Mirage\verify_password($current, $row['password_hash'])) {
+        throw new \Mirage\AppException(400, 'The current password is wrong.');
+    }
+    return set_password((int) $user['id'], $password);
+}
+
+function update_profile(array $user, string $full_name, string $headline): array
+{
+    $full_name = trim($full_name);
+    $headline = trim($headline);
+    if (strlen($full_name) < 2) {
+        throw new \Mirage\AppException(400, 'Enter the name people should see.');
+    }
+    if (strlen($headline) > 180) {
+        throw new \Mirage\AppException(400, 'Keep the headline under 180 characters.');
+    }
+    $db = \Mirage\db();
+    \Mirage\run($db, 'UPDATE users SET full_name = ?, headline = ? WHERE id = ?', [$full_name, $headline, $user['id']]);
+    return \Mirage\public_user(\Mirage\one($db, 'SELECT * FROM users WHERE id = ?', [$user['id']]));
+}
+
 function staff(array $user): bool
 {
     return in_array($user['role'], ['admin', 'instructor', 'moderator'], true);
@@ -801,6 +841,75 @@ function update_course(array $user, int $course_id, array $payload): array
         \Mirage\run($db, 'UPDATE courses SET ' . implode(', ', $fields) . ' WHERE id = ?', $args);
     }
     return course_row($db, $course_id);
+}
+
+function set_thumbnail(array $user, int $course_id, array $upload): array
+{
+    $db = \Mirage\db();
+    $course = course_row($db, $course_id);
+    if (!can_edit_course($user, $course)) {
+        throw new \Mirage\AppException(403, 'You cannot edit this course.');
+    }
+    $original = (string) ($upload['name'] ?? '');
+    $suffix = strtolower(pathinfo($original, PATHINFO_EXTENSION));
+    $mimes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif'];
+    if (!isset($mimes[$suffix])) {
+        throw new \Mirage\AppException(400, 'Use a JPG, PNG, WEBP, or GIF image.');
+    }
+    $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    $tmp = (string) ($upload['tmp_name'] ?? '');
+    if ($error !== UPLOAD_ERR_OK || $tmp === '' || !is_uploaded_file($tmp)) {
+        throw new \Mirage\AppException(400, 'Choose an image.');
+    }
+    $uploads = \Mirage\uploads_dir();
+    if (!is_dir($uploads) && !mkdir($uploads, 0777, true) && !is_dir($uploads)) {
+        throw new \RuntimeException('Could not create the uploads directory.');
+    }
+    $stored = 'thumb-' . bin2hex(random_bytes(12)) . '.' . ($suffix === 'jpeg' ? 'jpg' : $suffix);
+    $dest = $uploads . DIRECTORY_SEPARATOR . $stored;
+    if (!move_uploaded_file($tmp, $dest)) {
+        throw new \Mirage\AppException(400, 'The image could not be saved.');
+    }
+    $previous = (string) ($course['thumbnail'] ?? '');
+    \Mirage\run($db, 'UPDATE courses SET thumbnail = ?, thumb_x = 50, thumb_y = 50 WHERE id = ?', [$stored, $course_id]);
+    if ($previous !== '' && $previous !== $stored) {
+        $shared = \Mirage\one($db, 'SELECT COUNT(*) AS n FROM courses WHERE thumbnail = ?', [$previous]);
+        $old = $uploads . DIRECTORY_SEPARATOR . basename($previous);
+        if (($shared['n'] ?? 0) === 0 && is_file($old)) {
+            unlink($old);
+        }
+    }
+    return course_row($db, $course_id);
+}
+
+function set_thumbnail_focus(array $user, int $course_id, int $x, int $y): array
+{
+    $db = \Mirage\db();
+    $course = course_row($db, $course_id);
+    if (!can_edit_course($user, $course)) {
+        throw new \Mirage\AppException(403, 'You cannot edit this course.');
+    }
+    $x = max(0, min(100, $x));
+    $y = max(0, min(100, $y));
+    \Mirage\run($db, 'UPDATE courses SET thumb_x = ?, thumb_y = ? WHERE id = ?', [$x, $y, $course_id]);
+    return course_row($db, $course_id);
+}
+
+function thumbnail_file(int $course_id): array
+{
+    $db = \Mirage\db();
+    $course = \Mirage\one($db, 'SELECT thumbnail, title FROM courses WHERE id = ?', [$course_id]);
+    $name = is_array($course) ? basename((string) ($course['thumbnail'] ?? '')) : '';
+    if ($name === '') {
+        throw new \Mirage\AppException(404, 'This course has no thumbnail.');
+    }
+    $path = \Mirage\uploads_dir() . DIRECTORY_SEPARATOR . $name;
+    if (!is_file($path)) {
+        throw new \Mirage\AppException(404, 'This course has no thumbnail.');
+    }
+    $suffix = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+    $mimes = ['jpg' => 'image/jpeg', 'png' => 'image/png', 'webp' => 'image/webp', 'gif' => 'image/gif'];
+    return [$path, $name, $mimes[$suffix] ?? 'application/octet-stream'];
 }
 
 function studio_course(array $user, int $course_id): array
@@ -1505,7 +1614,11 @@ SQL,
     }
     $batch['joined'] = (bool) ($user && \Mirage\one($db, 'SELECT 1 FROM batch_students WHERE batch_id = ? AND user_id = ?', [$batch_id, $user['id']]));
     $batch['seats_taken'] = count($students);
-    return ['batch' => $batch, 'students' => $students, 'live_classes' => live_for_batch($db, $batch_id)];
+    $classes = [];
+    foreach (live_for_batch($db, $batch_id) as $row) {
+        $classes[] = decorate_live($db, $row, $user);
+    }
+    return ['batch' => $batch, 'students' => $students, 'live_classes' => $classes];
 }
 
 function live_for_batch(\PDO $db, int $batch_id): array
@@ -1756,6 +1869,16 @@ function create_live(array $user, array $payload): array
     }
     $minutes = (int) (($payload['minutes'] ?? null) ?: 60);
     $meeting = create_zoom_meeting($title, (string) $starts_at, $minutes);
+    $join = trim((string) ($payload['join_url'] ?? ''));
+    if ($join !== '') {
+        if (!preg_match('#^https://#i', $join)) {
+            throw new \Mirage\AppException(400, 'The meeting link must start with https://');
+        }
+        $meeting['zoom_join_url'] = $join;
+        if ($meeting['provider'] === 'demo') {
+            $meeting['provider'] = 'link';
+        }
+    }
     $db = \Mirage\db();
     $batch_id = $payload['batch_id'] ?? null;
     $course_id = $payload['course_id'] ?? null;

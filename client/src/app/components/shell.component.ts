@@ -16,8 +16,7 @@ import { AssistantComponent } from './assistant.component';
       @if (!lesson) {
         <aside class="side">
           <a class="logo" routerLink="/">
-            <span class="logo-mark">M</span>
-            <span><strong>MIRAGE</strong><small>SPA ACADEMY</small></span>
+            <img src="logo.webp" alt="Mirage Education" />
           </a>
           <nav>
             @for (item of items(); track item.to) {
@@ -34,7 +33,7 @@ import { AssistantComponent } from './assistant.component';
               <span class="avatar">{{ initials() }}</span>
               <span>
                 <strong>{{ api.user.full_name }}</strong><br />
-                <small style="color: #9aa0a8">{{ api.user.frappe_role }}</small>
+                <small>{{ api.user.frappe_role }}</small>
               </span>
             </div>
           }
@@ -115,6 +114,9 @@ export class ShellComponent implements OnInit {
     schools: 'M4 20V9l8-5 8 5v11M9 20v-6h6v6',
     resources: 'M6 4.5h8l4 4V20a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1zm8 0v4h4',
     reports: 'M5 19V10M12 19V5M19 19v-7',
+    batches: 'M4 7h16v12H4zM8 7V5h8v2',
+    quizzes: 'M8 4h8l2 2v14H8zM10 10h6M10 14h4',
+    programs: 'M4 5h6v6H4zM14 5h6v6h-6zM4 15h6v4H4zM14 15h6v4h-6z',
     admin: 'M12 3.5 5 6.5v5.2c0 4.2 2.9 7.2 7 8.8 4.1-1.6 7-4.6 7-8.8V6.5L12 3.5z',
     help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-6.2v.2M9.6 9.2a2.4 2.4 0 1 1 3.2 2.3c-.7.3-1.2.9-1.2 1.6',
   };
@@ -136,6 +138,10 @@ export class ShellComponent implements OnInit {
     const rows: { to: string; label: string; icon: string }[] = [
       { to: '/', label: 'Home', icon: 'home' },
       { to: '/courses', label: 'Courses', icon: 'courses' },
+      { to: '/batches', label: 'Batches', icon: 'batches' },
+      { to: '/quizzes', label: 'Quizzes', icon: 'quizzes' },
+      { to: '/programs', label: 'Programs', icon: 'programs' },
+      { to: '/assignments', label: 'Assignments', icon: 'courses' },
       { to: '/groups', label: 'Groups', icon: 'groups' },
     ];
     if (this.api.isAdmin()) rows.push({ to: '/users', label: 'Users', icon: 'users' });
@@ -144,6 +150,7 @@ export class ShellComponent implements OnInit {
         { to: '/schools', label: 'Schools', icon: 'schools' },
         { to: '/library', label: 'Resources', icon: 'resources' },
         { to: '/reports', label: 'Reports', icon: 'reports' },
+        { to: '/statistics', label: 'Statistics', icon: 'reports' },
       );
     }
     if (this.api.isAdmin()) rows.push({ to: '/admin', label: 'Admin', icon: 'admin' });

@@ -13,7 +13,24 @@ import { paragraphs } from '../format';
         <p class="crumbs"><a routerLink="/courses">Courses</a><span>/</span><span>{{ data.course.title }}</span></p>
         <div class="split">
           <div>
-            <div class="swatch" [attr.data-cat]="data.course.category" style="height: 180px; border-radius: 10px"></div>
+            <div class="banner-wrap">
+              @if (data.course.thumbnail) {
+                <img class="course-thumb" [class.adjusting]="adjusting" [src]="'/api/courses/' + data.course.id + '/thumbnail?v=' + data.course.thumbnail" [alt]="data.course.title" [style.object-position]="focusStyle()" (pointerdown)="dragBanner($event)" />
+              } @else {
+                <div class="swatch" [attr.data-cat]="data.course.category" style="height: 180px; border-radius: 10px"></div>
+              }
+              @if (canEdit()) {
+                <div class="banner-tools">
+                  <button class="btn small" type="button" (click)="adjusting = !adjusting">{{ adjusting ? 'Done' : 'Adjust picture' }}</button>
+                  @if (adjusting) {
+                    <label class="btn small ghost">
+                      {{ data.course.thumbnail ? 'Replace' : 'Choose photo' }}
+                      <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" hidden (change)="setThumb($event)" />
+                    </label>
+                  }
+                </div>
+              }
+            </div>
             <header style="margin: 16px 0">
               <p class="kicker">{{ data.course.category }} · {{ data.course.level }}</p>
               <h1>{{ data.course.title }}</h1>
@@ -78,9 +95,10 @@ import { paragraphs } from '../format';
                 <a class="btn" [routerLink]="['/courses', data.course.slug, 'learn', '1-1']">
                   {{ data.progress ? 'Continue' : 'Start lesson' }}
                 </a>
-              } @else if (api.canTeach()) {
+              }
+              @if (api.canTeach()) {
                 <form class="stack" (ngSubmit)="assignLearner()">
-                  <label class="field"><span>Assign a learner</span><input [(ngModel)]="learnerEmail" name="learnerEmail" type="email" required placeholder="learner@email" /></label>
+                  <label class="field"><span>Assign a learner</span><input [(ngModel)]="learnerEmail" name="learnerEmail" type="email" required placeholder="kajal@adsmagnify.in" /></label>
                   <button class="btn" type="submit" [disabled]="busy">Assign class</button>
                 </form>
               }
@@ -94,7 +112,7 @@ import { paragraphs } from '../format';
                     </p>
                   }
                 </div>
-              } @else {
+              } @else if (!data.enrolled && !api.canTeach()) {
                 <p class="muted">An instructor assigns this class before you can open it.</p>
               }
               <button class="btn ghost" type="button" (click)="share()">Share</button>
@@ -128,6 +146,7 @@ export class CourseComponent implements OnInit {
   review: any = { rating: 5, body: '' };
   learnerEmail = '';
   roster: any[] = [];
+  adjusting = false;
   kindLabel: any = { text: 'Reading', video: 'Video', quiz: 'Quiz', assignment: 'Assignment' };
 
   ngOnInit() {
@@ -146,6 +165,63 @@ export class CourseComponent implements OnInit {
       }
     } catch (err: any) {
       this.error = err.message;
+    }
+  }
+
+  canEdit() {
+    return this.api.canTeach() && (this.api.isAdmin() || this.api.user?.id === this.data?.course?.instructor_id);
+  }
+
+  focusStyle() {
+    return `${this.data?.course?.thumb_x ?? 50}% ${this.data?.course?.thumb_y ?? 50}%`;
+  }
+
+  dragBanner(event: PointerEvent) {
+    if (!this.adjusting || !this.data?.course?.thumbnail) return;
+    const frame = event.currentTarget as HTMLElement;
+    const place = (ev: PointerEvent) => {
+      const box = frame.getBoundingClientRect();
+      this.data.course.thumb_x = Math.max(0, Math.min(100, Math.round(((ev.clientX - box.left) / box.width) * 100)));
+      this.data.course.thumb_y = Math.max(0, Math.min(100, Math.round(((ev.clientY - box.top) / box.height) * 100)));
+    };
+    const move = (ev: PointerEvent) => place(ev);
+    const up = () => {
+      frame.removeEventListener('pointermove', move);
+      frame.removeEventListener('pointerup', up);
+      this.saveFocus();
+    };
+    frame.setPointerCapture(event.pointerId);
+    frame.addEventListener('pointermove', move);
+    frame.addEventListener('pointerup', up);
+    place(event);
+  }
+
+  async saveFocus() {
+    try {
+      const course = await this.api.api(`/studio/courses/${this.data.course.id}/thumbnail`, {
+        method: 'PATCH',
+        body: { x: this.data.course.thumb_x, y: this.data.course.thumb_y },
+      });
+      this.data.course.thumb_x = course.thumb_x;
+      this.data.course.thumb_y = course.thumb_y;
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    }
+  }
+
+  async setThumb(event: Event) {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const body = new FormData();
+    body.append('file', file);
+    try {
+      this.data.course = await this.api.api(`/studio/courses/${this.data.course.id}/thumbnail`, { method: 'POST', body, form: true });
+      this.api.toast('Picture saved.');
+    } catch (err: any) {
+      this.api.toast(err.message, 'warn');
+    } finally {
+      input.value = '';
     }
   }
 
